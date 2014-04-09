@@ -216,7 +216,7 @@ class APNSService(service.Service):
     if client:
       return client.sendMessage(notifications)
     else:
-      d = self.factory.deferred
+      d = defer.Deferred()
       timeout = reactor.callLater(self.timeout,
         lambda: d.called or d.errback(
           Exception('Notification timed out after %i seconds' % self.timeout)))
@@ -228,6 +228,12 @@ class APNSService(service.Service):
       d.addCallback(lambda p: p.sendMessage(notifications))
       d.addErrback(log_errback('apns-service-write'))
       d.addBoth(cancel_timeout)
+
+      def _complete_request(p):
+          d.callback(p)
+          return p
+
+      self.factory.deferred.addCallback(_complete_request)
       return d
 
   def read(self):
