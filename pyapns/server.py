@@ -5,6 +5,8 @@ import binascii
 import datetime
 import os
 from StringIO import StringIO as _StringIO
+from random import randint
+from time import time
 from OpenSSL import SSL, crypto
 from twisted.internet import reactor, defer
 from twisted.internet.protocol import (
@@ -23,6 +25,20 @@ APNS_SERVER_PORT = 2195
 FEEDBACK_SERVER_SANDBOX_HOSTNAME = "feedback.sandbox.push.apple.com"
 FEEDBACK_SERVER_HOSTNAME = "feedback.push.apple.com"
 FEEDBACK_SERVER_PORT = 2196
+
+ERROR_CODES = {
+    0: 'No errors encountered',
+    1: 'Processing error',
+    2: 'Missing device token',
+    3: 'Missing topic',
+    4: 'Missing payload',
+    5: 'Invalid token size',
+    6: 'Invalid topic size',
+    7: 'Invalid payload size',
+    8: 'Invalid token',
+    10: 'Shutdown',
+    255: 'None (unknown)',
+}
 
 if 'socks_proxy' in os.environ:
     from twunnel.proxy_server import createTunnelReactor
@@ -98,6 +114,14 @@ class APNSProtocol(Protocol):
   def connectionLost(self, reason):
     log.msg('APNSProtocol connectionLost')
     self.factory.removeClient(self)
+
+  def dataReceived(self, data):
+    log.msg('APNSProtocol dataReceived data=%s' % binascii.hexlify(data))
+    command, status, identifier = struct.unpack('!BBL', data)
+    if command == 8:
+      log.msg('Error "%s" for identifier %s.' % (ERROR_CODES.get(status, status), identifier))
+    else:
+      log.msg('Received unknown command %s' % command)
 
 
 class APNSFeedbackHandler(LineReceiver):
@@ -346,8 +370,8 @@ def encode_notifications(tokens, notifications):
         notifications   a list of notifications or a dictionary of only one
   """
 
-  fmt = "!BH32sH%ds"
-  structify = lambda t, p: struct.pack(fmt % len(p), 0, 32, t, len(p), p)
+  fmt = "!BLLH32sH%ds"
+  structify = lambda t, p: struct.pack(fmt % len(p), 1, randint(0, 2**32), time() + 60 * 60 * 24 * 365, 32, t, len(p), p)
   binaryify = lambda t: t.decode('hex')
   if type(notifications) is dict and type(tokens) in (str, unicode):
     tokens, notifications = ([tokens], [notifications])
