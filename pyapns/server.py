@@ -177,6 +177,7 @@ class APNSClientFactory(ReconnectingClientFactory):
     self.clientProtocol = None
     self.deferred = defer.Deferred()
     self.deferred.addErrback(log_errback('APNSClientFactory __init__'))
+    self.maxDelay = 600 # set maxDelay to 10 mins
 
   def addClient(self, p):
     self.clientProtocol = p
