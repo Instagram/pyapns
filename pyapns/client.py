@@ -34,7 +34,11 @@ def configure(opts):
     # provision initial app_ids
     if 'INITIAL' in OPTIONS:
       for args in OPTIONS['INITIAL']:
-        provision(*args)
+        try:
+          provision(*args)
+        except:
+          OPTIONS['CONFIGURED'] = False
+          return False
   return OPTIONS['CONFIGURED']
 
 
@@ -77,7 +81,7 @@ def default_callback(func):
 
 @default_callback
 @reprovision_and_retry
-def provision(app_id, path_to_cert, environment, timeout=15, async=False, 
+def provision(app_id, path_to_cert, environment, timeout=15, async=False,
               callback=None, errback=None):
   args = [app_id, path_to_cert, environment, timeout]
   f_args = ['provision', args, callback, errback]
@@ -89,7 +93,7 @@ def provision(app_id, path_to_cert, environment, timeout=15, async=False,
 
 @default_callback
 @reprovision_and_retry
-def notify(app_id, tokens, notifications, async=False, callback=None, 
+def notify(app_id, tokens, notifications, async=False, callback=None,
            errback=None):
   args = [app_id, tokens, notifications]
   f_args = ['notify', args, callback, errback]
@@ -111,8 +115,7 @@ def feedback(app_id, async=False, callback=None, errback=None):
   t.start()
 
 def _xmlrpc_thread(method, args, callback, errback=None):
-  if not configure({}):
-    raise APNSNotConfigured('APNS Has not been configured.')
+  configure({})
   proxy = ServerProxy(OPTIONS['HOST'], allow_none=True, use_datetime=True,
                       timeout=OPTIONS['TIMEOUT'])
   try:
@@ -127,7 +130,11 @@ def _xmlrpc_thread(method, args, callback, errback=None):
       errback(e)
     else:
       raise e
-
+  except Exception, e:
+    if errback is not None:
+      errback(e)
+    else:
+      raise e
 
 ## --------------------------------------------------------------
 ## Thank you Volodymyr Orlenko:
