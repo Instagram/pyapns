@@ -40,14 +40,14 @@ ERROR_CODES = {
     255: 'None (unknown)',
 }
 
-if 'socks_proxy' in os.environ:
+if 'https_proxy' in os.environ:
     from twunnel.proxy_server import createTunnelReactor
-    host, port = os.environ['socks_proxy'].split(':')
+    host, port = os.environ['https_proxy'].split(':')
 
     TUNNEL_CONFIG = {
         'PROXY_SERVERS': [
             {
-                'TYPE': 'SOCKS5',
+                'TYPE': 'HTTPS',
                 'ADDRESS': host,
                 'PORT': int(port),
             },
